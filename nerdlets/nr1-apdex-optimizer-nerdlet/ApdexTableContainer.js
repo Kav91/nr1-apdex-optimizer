@@ -1,7 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { NerdGraphQuery } from 'nr1';
-import gql from 'graphql-tag';
+import { NerdGraphQuery, ngql } from 'nr1';
 import ApdexTable from './ApdexTable';
 import { timeRangeToNrql } from '@newrelic/nr1-community';
 
@@ -129,7 +128,7 @@ export default class ApdexTableContainer extends React.Component {
     const where =
       eventType === 'Transaction' ? "WHERE transactionType = 'Web'" : ''; // Only Web Transactions
     return {
-      query: gql`{
+      query: ngql`{
                 actor {
                     account(id: ${accountId}) {
                         nrql(query: "SELECT percentile(duration, ${percentile}) FROM ${eventType} ${where} ${since} FACET appName LIMIT MAX") {
@@ -145,7 +144,7 @@ export default class ApdexTableContainer extends React.Component {
   statsQuery(accountId, threshold, eventType) {
     const since = timeRangeToNrql(this.props.platformState.timeRange);
     return {
-      query: gql`{
+      query: ngql`{
                 actor {
                     account(id: ${accountId}) {
                         nrql(query: "SELECT apdex(duration, t: ${threshold}), count(*) AS 'Throughput' FROM ${eventType} ${since} FACET appName LIMIT MAX") {
@@ -161,7 +160,7 @@ export default class ApdexTableContainer extends React.Component {
   errorsQuery(accountId, eventType) {
     const since = timeRangeToNrql(this.props.platformState.timeRange);
     return {
-      query: gql`{
+      query: ngql`{
                 actor {
                     account(id: ${accountId}) {
                         nrql(query: "SELECT count(*) FROM ${eventType} ${since} FACET appName LIMIT MAX") {
@@ -176,7 +175,7 @@ export default class ApdexTableContainer extends React.Component {
   // NerdGraph graphql query of entities in the APM and BROWSER domains
   appsQuery(accountId, cursor) {
     return {
-      query: gql`{
+      query: ngql`{
                 actor {
                     entitySearch(query: "accountId = '${accountId}' AND domain IN ('APM', 'BROWSER')") {
                         results (cursor: ${
