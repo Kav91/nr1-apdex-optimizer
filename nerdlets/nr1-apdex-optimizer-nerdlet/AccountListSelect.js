@@ -12,7 +12,6 @@ export default class AccountListSelect extends React.Component {
     this.state = {
       accountName: 'Select account...'
     };
-    this.onAccountChange = this.onAccountChange.bind(this);
   }
 
   // Actions to perform on initial load
@@ -20,10 +19,10 @@ export default class AccountListSelect extends React.Component {
     this.queryAccounts();
   }
 
-  onAccountChange(item) {
+  onAccountChange = item => {
     this.setState({ accountName: item.name });
     this.props.onAccountChange(item.id);
-  }
+  };
 
   async queryAccounts() {
     const { data } = await AccountsQuery.query();

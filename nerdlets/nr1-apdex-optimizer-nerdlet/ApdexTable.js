@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import { Button, NerdGraphMutation, Toast, ngql } from 'nr1';
 import ReactTable, { ReactTableDefaults } from 'react-table';
 import 'react-table/react-table.css';
 import './styles.scss';
@@ -18,6 +19,93 @@ const columnDefaults = {
   headerClassName: 'wordwrap',
   headerStyle: { textAlign: 'center' }
 };
+
+const updateBrowserApdex = (guid, value) => {
+  Toast.showToast({
+    title: 'Applying apdex update...',
+    type: Toast.TYPE.NORMAL
+  });
+
+  NerdGraphMutation.mutate({
+    mutation: ngql`mutation {
+    agentApplicationSettingsUpdate(settings: {browserConfig: {apdexTarget: ${value}}}, guid: "${guid}") {
+      guid
+      errors {
+        description
+        errorClass
+        field
+      }
+      browserSettings {
+        browserConfig {
+          apdexTarget
+        }
+      }
+    }
+  }
+  `
+  }).then(result => {
+    const newValue =
+      result?.data?.agentApplicationSettingsUpdate?.browserSettings
+        ?.browserConfig?.apdexTarget;
+
+    if (parseFloat(value) === parseFloat(newValue)) {
+      Toast.showToast({
+        title: 'Successfully updated',
+        description: 'Refresh to update table',
+        type: Toast.TYPE.NORMAL
+      });
+    } else {
+      Toast.showToast({
+        title: 'Failed to update',
+        type: Toast.TYPE.CRITICAL
+      });
+    }
+  });
+};
+
+const updateApmApdex = (guid, value) => {
+  Toast.showToast({
+    title: 'Applying apdex update...',
+    type: Toast.TYPE.NORMAL
+  });
+
+  NerdGraphMutation.mutate({
+    mutation: ngql`mutation {
+    agentApplicationSettingsUpdate(settings: {apmConfig: {apdexTarget: ${value}}}, guid: "${guid}") {
+      guid
+      errors {
+        description
+        errorClass
+        field
+      }
+      apmSettings {
+        apmConfig {
+          apdexTarget
+        }
+      }
+    }
+  }
+  `
+  }).then(result => {
+    const newValue =
+      result?.data?.agentApplicationSettingsUpdate?.apmSettings?.apmConfig
+        ?.apdexTarget;
+
+    if (parseFloat(value) === parseFloat(newValue)) {
+      Toast.showToast({
+        title: 'Successfully updated',
+        description: 'Refresh to update table',
+        type: Toast.TYPE.NORMAL
+      });
+    } else {
+      Toast.showToast({
+        title: 'Failed to update',
+        type: Toast.TYPE.CRITICAL
+      });
+    }
+  });
+};
+
 const columns = [
   {
     Header: 'Application Name',
@@ -58,6 +146,28 @@ const columns = [
   {
     Header: 'Suggested APM ApdexT',
     accessor: 'apmSuggestedApdexT',
+    Cell: cellInfo => {
+      return (
+        <span>
+          {cellInfo.row.apmSuggestedApdexT}
+          {cellInfo.row.apmSuggestedApdexT && (
+            <Button
+              style={{ marginLeft: '10px', marginTop: '-5px' }}
+              type={Button.TYPE.PRIMARY}
+              sizeType={Button.SIZE_TYPE.SMALL}
+              onClick={() =>
+                updateApmApdex(
+                  cellInfo.original.guid,
+                  cellInfo.original.apmSuggestedApdexT
+                )
+              }
+            >
+              Apply
+            </Button>
+          )}{' '}
+        </span>
+      );
+    },
     getProps: (state, rowInfo) => {
       return {
         style: {
@@ -105,6 +215,28 @@ const columns = [
   {
     Header: 'Suggested Browser ApdexT',
     accessor: 'browserSuggestedApdexT',
+    Cell: cellInfo => {
+      return (
+        <span>
+          {cellInfo.row.browserSuggestedApdexT}
+          {cellInfo.row.browserSuggestedApdexT && (
+            <Button
+              style={{ marginLeft: '10px', marginTop: '-5px' }}
+              type={Button.TYPE.PRIMARY}
+              sizeType={Button.SIZE_TYPE.SMALL}
+              onClick={() =>
+                updateBrowserApdex(
+                  cellInfo.original.guid,
+                  cellInfo.original.browserSuggestedApdexT
+                )
+              }
+            >
+              Apply
+            </Button>
+          )}{' '}
+        </span>
+      );
+    },
     getProps: (state, rowInfo) => {
       return {
         style: {

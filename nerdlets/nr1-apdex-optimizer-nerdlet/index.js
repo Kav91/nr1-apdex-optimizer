@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import {
+  nerdlet,
   BlockText,
   HeadingText,
   PlatformStateContext,
@@ -13,44 +14,37 @@ import ApdexTableContainer from './ApdexTableContainer';
 
 const LINK_COLOR = 'rgb(0, 121, 191)';
 
-export default class ApdexOptimizer extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      accountId: null
-    };
-    this.onAccountChange = this.onAccountChange.bind(this);
-  }
+function OptimizerRoot() {
+  const [accountId, setAccountId] = useState(null);
+  const platformState = useContext(PlatformStateContext);
 
-  onAccountChange(accountId) {
-    this.setState({
-      accountId: accountId
+  useEffect(() => {
+    nerdlet.setConfig({
+      timePicker: false
     });
-  }
+  }, []);
 
-  render() {
-    return (
+  return (
+    <div>
       <Stack
         directionType={Stack.DIRECTION_TYPE.VERTICAL}
         horizontalType={Stack.HORIZONTAL_TYPE.FILL}
-        style={{ paddingLeft: 20, paddingRight: 20, width: '98%' }}
+        style={{ paddingLeft: 20, paddingRight: 20, width: '97%' }}
       >
         <StackItem>
-          <AccountListSelect onAccountChange={this.onAccountChange} />
+          <AccountListSelect
+            onAccountChange={accountId => setAccountId(accountId)}
+          />
         </StackItem>
         <StackItem>
-          <PlatformStateContext.Consumer>
-            {platformState =>
-              this.state.accountId ? (
-                <ApdexTableContainer
-                  accountId={this.state.accountId}
-                  platformState={platformState}
-                />
-              ) : (
-                <BlockText>&nbsp;</BlockText>
-              )
-            }
-          </PlatformStateContext.Consumer>
+          {accountId ? (
+            <ApdexTableContainer
+              accountId={accountId}
+              platformState={platformState}
+            />
+          ) : (
+            <BlockText>&nbsp;</BlockText>
+          )}
         </StackItem>
         <StackItem>
           <HeadingText style={{ marginBottom: 8 }}>
@@ -81,6 +75,8 @@ export default class ApdexOptimizer extends React.Component {
           </BlockText>
         </StackItem>
       </Stack>
-    );
-  }
+    </div>
+  );
 }
+
+export default OptimizerRoot;

@@ -1,7 +1,7 @@
 {
   "schemaType": "NERDPACK",
   "id": "c08e213c-5e77-4465-bbf9-896b1b703615",
-  "displayName": "nr1-apdex-optimizer",
+  "displayName": "nr1-apdex-optimizer (labs customized)",
   "description": "Nerdpack apdex-optimizer",
   "repositoryUrl": "git+https://github.com/newrelic/nr1-apdex-optimizer.git"
 }

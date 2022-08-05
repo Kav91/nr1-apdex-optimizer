@@ -27,6 +27,7 @@ class ApdexRow {
   browserApdexScore = null;
   browserCount = null;
   browserErrorCount = null;
+  guid = null;
 }
 
 export default class ApdexTableContainer extends React.Component {
@@ -79,10 +80,12 @@ export default class ApdexTableContainer extends React.Component {
     const apps = await this.fetchApps();
     for (let i = 0; i < apps.length; i++) {
       const appName = apps[i].name;
+
       if (!rowsMap.has(appName)) {
         const row = new ApdexRow(appName);
         const domain = apps[i].domain;
         row.accountId = this.props.accountId;
+        row.guid = apps[i].guid;
         if (domain === 'APM') {
           row.apmAppId = apps[i].applicationId;
           if (apps[i].settings) row.apmApdexT = apps[i].settings.apdexTarget;
@@ -97,6 +100,8 @@ export default class ApdexTableContainer extends React.Component {
       } else {
         const row = rowsMap.get(appName);
         const domain = apps[i].domain;
+        row.guid = apps[i].guid;
+
         if (domain === 'APM') {
           row.apmAppId = apps[i].applicationId;
           if (apps[i].settings) row.apmApdexT = apps[i].settings.apdexTarget;
@@ -182,6 +187,7 @@ export default class ApdexTableContainer extends React.Component {
                           cursor === null ? null : `"${cursor}"`
                         }) {
                             entities {
+                                guid
                                 name
                                 domain
                                 entityType
@@ -233,6 +239,7 @@ export default class ApdexTableContainer extends React.Component {
       }
       data.push({
         name: value.name,
+        guid: value.guid,
         accountId: value.accountId,
         apmApdexT: value.apmApdexT,
         apmApdexTHref: value.apmApdexTHref,
@@ -331,7 +338,9 @@ export default class ApdexTableContainer extends React.Component {
 
   render() {
     return (
-      <ApdexTable data={this.state.data} isLoading={this.state.isLoading} />
+      <>
+        <ApdexTable data={this.state.data} isLoading={this.state.isLoading} />
+      </>
     );
   }
 }
