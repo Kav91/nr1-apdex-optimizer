@@ -88,6 +88,8 @@ export default class ApdexTableContainer extends React.Component {
         row.guid = apps[i].guid;
         if (domain === 'APM') {
           row.apmAppId = apps[i].applicationId;
+          row.language = apps[i].language;
+
           if (apps[i].settings) row.apmApdexT = apps[i].settings.apdexTarget;
           row.apmApdexTHref = `https://rpm.newrelic.com/accounts/${row.accountId}/applications/${row.apmAppId}/settings-application`;
         } else if (domain === 'BROWSER') {
@@ -104,6 +106,8 @@ export default class ApdexTableContainer extends React.Component {
 
         if (domain === 'APM') {
           row.apmAppId = apps[i].applicationId;
+          row.language = apps[i].language;
+
           if (apps[i].settings) row.apmApdexT = apps[i].settings.apdexTarget;
           row.apmApdexTHref = `https://rpm.newrelic.com/accounts/${row.accountId}/applications/${row.apmAppId}/settings-application`;
         } else if (domain === 'BROWSER') {
@@ -202,6 +206,7 @@ export default class ApdexTableContainer extends React.Component {
                                 }
                                 ... on ApmApplicationEntityOutline {
                                     accountId
+                                    language
                                     alertSeverity
                                     settings {
                                         apdexTarget
@@ -240,6 +245,7 @@ export default class ApdexTableContainer extends React.Component {
       data.push({
         name: value.name,
         guid: value.guid,
+        language: value.language,
         accountId: value.accountId,
         apmApdexT: value.apmApdexT,
         apmApdexTHref: value.apmApdexTHref,
@@ -266,7 +272,7 @@ export default class ApdexTableContainer extends React.Component {
     let response = await NerdGraphQuery.query(
       this.statsQuery(this.props.accountId, 0.5, 'Transaction')
     );
-    let results = response.data.actor.account.nrql.results;
+    let results = response?.data?.actor?.account?.nrql?.results || [];
     for (let i = 0; i < results.length; i++) {
       const appName = results[i].appName;
       const row = rowsMap.get(appName);
@@ -278,7 +284,7 @@ export default class ApdexTableContainer extends React.Component {
     response = await NerdGraphQuery.query(
       this.statsQuery(this.props.accountId, 7.0, 'PageView')
     );
-    results = response.data.actor.account.nrql.results;
+    results = response?.data?.actor?.account?.nrql?.results || [];
     for (let i = 0; i < results.length; i++) {
       const appName = results[i].appName;
       const row = rowsMap.get(appName);
@@ -293,7 +299,7 @@ export default class ApdexTableContainer extends React.Component {
     let response = await NerdGraphQuery.query(
       this.errorsQuery(this.props.accountId, 'TransactionError')
     );
-    let results = response.data.actor.account.nrql.results;
+    let results = response?.data?.actor?.account?.nrql?.results || [];
     for (let i = 0; i < results.length; i++) {
       const appName = results[i].appName;
       const row = rowsMap.get(appName);
@@ -304,7 +310,7 @@ export default class ApdexTableContainer extends React.Component {
     response = await NerdGraphQuery.query(
       this.errorsQuery(this.props.accountId, 'JavaScriptError')
     );
-    results = response.data.actor.account.nrql.results;
+    results = response?.data?.actor?.account?.nrql?.results || [];
     for (let i = 0; i < results.length; i++) {
       const appName = results[i].appName;
       const row = rowsMap.get(appName);
@@ -322,7 +328,7 @@ export default class ApdexTableContainer extends React.Component {
         eventType
       )
     );
-    const results = data.actor.account.nrql.results;
+    const results = data?.actor?.account?.nrql?.results || [];
     for (let i = 0; i < results.length; i++) {
       const appName = results[i].appName;
       const row = rowsMap.get(appName);

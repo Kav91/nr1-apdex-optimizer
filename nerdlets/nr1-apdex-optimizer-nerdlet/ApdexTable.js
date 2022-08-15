@@ -1,10 +1,13 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import { Button, NerdGraphMutation, Toast, ngql } from 'nr1';
+import { Button, NerdGraphMutation, Toast, ngql, Tooltip } from 'nr1';
 import ReactTable, { ReactTableDefaults } from 'react-table';
 import 'react-table/react-table.css';
 import './styles.scss';
 
+const async = require('async');
+
+const MAX_QUEUE_LIMIT = 3; // apm down stream service can timeout and be unreliable
 const DEFAULT_APM_APDEX_T = 0.5;
 const DEFAULT_BROWSER_APDEX_T = 7;
 
@@ -18,6 +21,97 @@ const columnDefaults = {
   ...ReactTableDefaults.column,
   headerClassName: 'wordwrap',
   headerStyle: { textAlign: 'center' }
+};
+
+const updateAllApdex = suggestions => {
+  return new Promise(resolve => {
+    const updateResponses = [];
+    const updateQueue = async.queue((suggestion, callback) => {
+      const { type, value, guid } = suggestion;
+
+      if (type === 'apm') {
+        NerdGraphMutation.mutate({
+          mutation: ngql`mutation {
+            agentApplicationSettingsUpdate(settings: {apmConfig: {apdexTarget: ${value}}}, guid: "${guid}") {
+              guid
+              errors {
+                description
+                errorClass
+                field
+              }
+              apmSettings {
+                apmConfig {
+                  apdexTarget
+                }
+              }
+            }
+          }
+          `
+        })
+          .catch(error => {
+            // eslint-disable-next-line
+            console.error(error);
+          })
+          .then(value => {
+            updateResponses.push(value);
+            callback();
+          });
+      } else if (type === 'browser') {
+        NerdGraphMutation.mutate({
+          mutation: ngql`mutation {
+          agentApplicationSettingsUpdate(settings: {browserConfig: {apdexTarget: ${value}}}, guid: "${guid}") {
+            guid
+            errors {
+              description
+              errorClass
+              field
+            }
+            browserSettings {
+              browserConfig {
+                apdexTarget
+              }
+            }
+          }
+        }`
+        })
+          .catch(error => {
+            // eslint-disable-next-line
+            console.error(error);
+          })
+          .then(value => {
+            updateResponses.push(value);
+            callback();
+          });
+      } else {
+        // unknown
+        callback();
+      }
+    }, MAX_QUEUE_LIMIT);
+
+    suggestions.forEach(s => {
+      if (s.browserSuggestedApdexT) {
+        updateQueue.push({
+          type: 'browser',
+          value: s.browserSuggestedApdexT,
+          guid: s.guid
+        });
+      }
+
+      if (s.apmSuggestedApdexT) {
+        updateQueue.push({
+          type: 'apm',
+          value: s.apmSuggestedApdexT,
+          guid: s.guid
+        });
+      }
+    });
+
+    updateQueue.drain(() => {
+      // eslint-disable-next-line
+      console.log(updateResponses);
+      resolve(updateResponses);
+    });
+  });
 };
 
 const updateBrowserApdex = (guid, value) => {
@@ -151,19 +245,27 @@ const columns = [
         <span>
           {cellInfo.row.apmSuggestedApdexT}
           {cellInfo.row.apmSuggestedApdexT && (
-            <Button
-              style={{ marginLeft: '10px', marginTop: '-5px' }}
-              type={Button.TYPE.PRIMARY}
-              sizeType={Button.SIZE_TYPE.SMALL}
-              onClick={() =>
-                updateApmApdex(
-                  cellInfo.original.guid,
-                  cellInfo.original.apmSuggestedApdexT
-                )
-              }
-            >
-              Apply
-            </Button>
+            <Tooltip text="Note: PHP & C do not support server side configuration">
+              <Button
+                disabled={
+                  cellInfo?.original?.language === 'php' ||
+                  cellInfo?.original?.language === 'c' ||
+                  parseFloat(cellInfo.original.apmSuggestedApdexT) ===
+                    parseFloat(cellInfo.original.apmApdexT)
+                }
+                style={{ marginLeft: '10px', marginTop: '-5px' }}
+                type={Button.TYPE.PRIMARY}
+                sizeType={Button.SIZE_TYPE.SMALL}
+                onClick={() =>
+                  updateApmApdex(
+                    cellInfo.original.guid,
+                    cellInfo.original.apmSuggestedApdexT
+                  )
+                }
+              >
+                Apply
+              </Button>
+            </Tooltip>
           )}{' '}
         </span>
       );
@@ -221,6 +323,10 @@ const columns = [
           {cellInfo.row.browserSuggestedApdexT}
           {cellInfo.row.browserSuggestedApdexT && (
             <Button
+              disabled={
+                parseFloat(cellInfo.original.browserSuggestedApdexT) ===
+                parseFloat(cellInfo.original.browserApdexT)
+              }
               style={{ marginLeft: '10px', marginTop: '-5px' }}
               type={Button.TYPE.PRIMARY}
               sizeType={Button.SIZE_TYPE.SMALL}
@@ -261,7 +367,8 @@ export default class ApdexTable extends React.Component {
   constructor() {
     super();
     this.state = {
-      search: ''
+      search: '',
+      updatingAll: false
     };
   }
 
@@ -280,6 +387,20 @@ export default class ApdexTable extends React.Component {
       });
     }
 
+    // php and c do not support server side config
+    const apdexSuggestions = (data || []).filter(
+      d =>
+        (d.browserSuggestedApdexT &&
+          parseFloat(d.browserSuggestedApdexT) > 0 &&
+          parseFloat(d.browserSuggestedApdexT) !==
+            parseFloat(d.browserApdexT)) ||
+        (d.apmSuggestedApdexT &&
+          parseFloat(d.apmSuggestedApdexT) > 0 &&
+          d.language !== 'php' &&
+          d.language !== 'c' &&
+          parseFloat(d.apmSuggestedApdexT) !== parseFloat(d.apmApdexT))
+    );
+
     return (
       <div>
         Search:{' '}
@@ -288,6 +409,22 @@ export default class ApdexTable extends React.Component {
           onChange={e => this.setState({ search: e.target.value })}
           style={{ border: '1px solid gray', width: '20%' }}
         />
+        <div style={{ float: 'right' }}>
+          <Tooltip text="Note: PHP & C do not support server side configuration">
+            <Button
+              loading={this.state.updatingAll}
+              disabled={apdexSuggestions.length === 0}
+              onClick={() => {
+                this.setState({ updatingAll: true }, async () => {
+                  await updateAllApdex(apdexSuggestions);
+                  this.setState({ updatingAll: false });
+                });
+              }}
+            >
+              Apply All Suggestions ({apdexSuggestions.length})
+            </Button>
+          </Tooltip>
+        </div>
         <p>&nbsp;</p>
         <ReactTable
           data={data}

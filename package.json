@@ -23,6 +23,7 @@
   "homepage": "https://github.com/newrelic/nr1-apdex-optimizer#readme",
   "dependencies": {
     "@newrelic/nr1-community": "^1.2.0",
+    "async": "^3.2.4",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
     "react-table": "^6.10.0"
